@@ -1,6 +1,6 @@
 # quran-audio
 
-Download Quran MP3 recitations from your terminal.
+Download or stream Quran MP3 recitations from your terminal.
 Search for a surah, search for a reciter, press **Run** (or **Play**) — done.
 
 ```
@@ -24,7 +24,7 @@ $ quran
 - Search in English or Arabic (`kahf`, `18`, `الكهف`, `afasy`, `العفاسي`)
 - 3 audio sources with automatic fallback — if one is down, the next is used
 - Resume-friendly: already-downloaded files are skipped
-- **Play** option: listen right away, in the terminal (mpv / mpg123 / ffplay) or in your default music player
+- **Play** option: stream right away without saving anything, in the terminal (mpv / mpg123 / ffplay) or in your browser / default player
 
 ---
 
@@ -156,9 +156,10 @@ quran [-o <folder>] [--arabic | --no-arabic]
 1. **Surah** — type to filter. Number, English name, Arabic name and common spellings all work (`36`, `yasin`, `ya-sin`, `يس`). Pick **★ All 114 surahs** to download the whole Quran.
 2. **Reciter** — type to filter (`sudais`, `dosari`, `منشاوي`). The `[N sources]` tag shows how many backup sources that reciter has.
 3. **Run download** — a progress bar per file. Files are named `001 - Al-Fatihah.mp3` inside a folder named after the reciter.
-4. **Play** — downloads the file if needed, then plays it.
-   - If `mpv`, `mpg123` or `ffplay` is installed, playback happens inside the terminal (press `q` to stop). On "All 114 surahs" they play in order.
-   - Otherwise the file opens in your system's default music player (Windows Media Player / Groove, Music on macOS, your default player on Linux, and the chosen app on Android via `termux-open`).
+4. **Play** — streams the surah directly from the source. Nothing is saved to disk.
+   - If `mpv`, `mpg123` or `ffplay` is installed, it streams inside the terminal (press `q` to stop). On "All 114 surahs" they stream in order as a playlist.
+   - Otherwise the stream URL opens in your browser / default player (on Android via `termux-open`).
+   - The same 3-source fallback applies: the first source that answers is streamed.
 
    To get in-terminal playback:
    ```bash

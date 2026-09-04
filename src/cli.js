@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 import { SURAHS } from "./surahs.js";
 import { loadReciters } from "./sources.js";
-import { downloadSurah } from "./download.js";
+import { downloadSurah, resolveUrl } from "./download.js";
 import { play, findTerminalPlayer } from "./play.js";
 
 const fold = (s) => s.toLowerCase().replace(/[`'’\-]/g, "").replace(/\s+/g, " ");
@@ -35,7 +35,7 @@ function parseArgs(argv) {
 export async function main(argv = process.argv.slice(2)) {
   const opts = parseArgs(argv);
   if (opts.help) {
-    console.log(`quran – download Quran MP3 recitations
+    console.log(`quran – download or stream Quran MP3 recitations
 
   quran [-o <folder>] [--arabic | --no-arabic]
 
@@ -49,7 +49,7 @@ export async function main(argv = process.argv.slice(2)) {
 
   // 1. Surah
   const surahChoices = [
-    { name: chalk.bold("★ All 114 surahs"), value: "all", description: "Download the full Quran for one reciter" },
+    { name: chalk.bold("★ All 114 surahs"), value: "all", description: "Download or stream the full Quran for one reciter" },
     ...SURAHS.map((s) => ({
       name: `${String(s.number).padStart(3, " ")}  ${s.name.padEnd(16)}${opts.arabic ? " " + s.arabic : ""}`,
       value: s.number,
@@ -103,13 +103,34 @@ export async function main(argv = process.argv.slice(2)) {
         name: "Play",
         value: "play",
         description: player
-          ? `download if needed, then play in the terminal with ${player.bin}`
-          : "download if needed, then open in your default music player",
+          ? `stream now in the terminal with ${player.bin} (nothing is saved)`
+          : "stream now in your browser / default player (nothing is saved)",
       },
       { name: "Cancel", value: "cancel" },
     ],
   });
   if (action === "cancel") return;
+
+  if (action === "play") {
+    if (surahs.length > 1) process.stdout.write(chalk.dim("  checking sources for 114 surahs…"));
+    const results = await Promise.all(surahs.map((s) => {
+      const label = `${String(s.number).padStart(3, "0")} ${s.name}`;
+      return resolveUrl({
+        reciter, surah: s,
+        onFallback: (src, msg) => console.log(chalk.yellow(`
+  ${label} ${src} failed (${msg}) → trying next source`)),
+      }).catch((e) => { console.log(chalk.red(`
+  ✗ ${label} ${e.message}`)); return null; });
+    }));
+    if (surahs.length > 1) process.stdout.write("\r" + " ".repeat(40) + "\r");
+    const urls = results.filter(Boolean).map((r) => r.url);
+    if (surahs.length === 1 && results[0]) console.log(chalk.dim(`  streaming from ${results[0].source}`));
+    if (!urls.length) return;
+    console.log(chalk.dim(player ? `  playing with ${player.bin}… (press q to stop)\n` : "  opening in your default player…\n"));
+    try { await play(urls); } catch (e) { console.log(chalk.red(`  could not start player: ${e.message}`)); }
+    const again = await confirm({ message: "Another surah?", default: false }).catch(() => false);
+    return again ? main(argv) : undefined;
+  }
 
   const bar = new cliProgress.SingleBar(
     { format: "  {surah} |{bar}| {percentage}% {size}", hideCursor: true, clearOnComplete: true, barsize: 30 },
@@ -142,11 +163,6 @@ export async function main(argv = process.argv.slice(2)) {
 
   console.log(`\n  ${chalk.green(`${ok} downloaded`)}${skipped ? chalk.dim(`, ${skipped} already present`) : ""}${failed.length ? chalk.red(`, ${failed.length} failed`) : ""}`);
   console.log(`  ${chalk.dim(outDir)}\n`);
-  if (action === "play" && files.length) {
-    console.log(chalk.dim(player ? "  playing… (press q to stop)\n" : "  opening in your music player…\n"));
-    try { await play(files, { dir: outDir }); }
-    catch (e) { console.log(chalk.red(`  could not start player: ${e.message}`)); }
-  }
   if (surahs.length === 1 && !failed.length) {
     const again = await confirm({ message: "Another surah?", default: false }).catch(() => false);
     if (again) return main(argv);

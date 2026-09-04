@@ -55,3 +55,31 @@ export async function downloadSurah({ reciter, surah, outDir, onProgress, onFall
   }
   throw new Error(`all sources failed for surah ${surah.number}:\n  ` + errors.join("\n  "));
 }
+
+/**
+ * Find the first source URL that answers for this reciter/surah (no download).
+ * Returns { url, source } or throws when every source fails.
+ */
+export async function resolveUrl({ reciter, surah, onFallback }) {
+  const errors = [];
+  for (const src of SOURCES) {
+    if (!reciter[src.id]) continue;
+    const url = src.url(reciter, surah.number);
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "User-Agent": UA, Range: "bytes=0-0" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(10000),
+      });
+      const ct = res.headers.get("content-type") || "";
+      if (!res.ok || /text\/html/i.test(ct)) throw new Error(`HTTP ${res.status}`);
+      res.body?.cancel().catch(() => {});
+      return { url, source: src.label };
+    } catch (e) {
+      errors.push(`${src.label}: ${e.message}`);
+      onFallback?.(src.label, e.message);
+    }
+  }
+  throw new Error(`no source available for surah ${surah.number}:\n  ` + errors.join("\n  "));
+}

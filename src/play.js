@@ -44,12 +44,11 @@ export async function openWithSystem(target) {
 }
 
 /**
- * Play the given files. Uses a terminal player when available (sequential, blocking),
- * else opens the first file (or the folder when there are many) in the default player.
+ * Stream the given URLs. Uses a terminal player when available (sequential, blocking);
+ * otherwise opens the first URL with the system handler (browser / default player), which streams it.
  */
-export async function play(files, { dir } = {}) {
-  if (await playInTerminal(files)) return { how: findTerminalPlayer().bin };
-  const target = files.length > 1 && dir ? dir : files[0];
-  await openWithSystem(target);
+export async function play(urls) {
+  if (await playInTerminal(urls)) return { how: findTerminalPlayer().bin };
+  await openWithSystem(urls[0]);
   return { how: "system player" };
 }
