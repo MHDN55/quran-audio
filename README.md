@@ -157,7 +157,9 @@ quran [-o <folder>] [--arabic | --no-arabic]
 2. **Reciter** — type to filter (`sudais`, `dosari`, `منشاوي`). The `[N sources]` tag shows how many backup sources that reciter has.
 3. **Run download** — a progress bar per file. Files are named `001 - Al-Fatihah.mp3` inside a folder named after the reciter.
 4. **Play** — streams the surah directly from the source. Nothing is saved to disk.
-   - If `mpv`, `mpg123` or `ffplay` is installed, it streams inside the terminal (press `q` to stop). On "All 114 surahs" they stream in order as a playlist.
+   - If `mpv`, `mpg123` or `ffplay` is installed, it streams inside the terminal. On "All 114 surahs" they stream in order as a playlist.
+   - **Player controls** (mpv): `SPACE` pause / resume · `←` `→` seek 5 s · `↑` `↓` seek 1 min · `>` `<` next / previous surah · `q` stop.
+     With mpg123: `SPACE` pause / resume, `f` next, `d` previous, `q` stop. ffplay cannot pause in the terminal, so mpv is recommended.
    - Otherwise the stream URL opens in your browser / default player (on Android via `termux-open`).
    - The same 3-source fallback applies: the first source that answers is streamed.
 

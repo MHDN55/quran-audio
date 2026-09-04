@@ -126,7 +126,8 @@ export async function main(argv = process.argv.slice(2)) {
     const urls = results.filter(Boolean).map((r) => r.url);
     if (surahs.length === 1 && results[0]) console.log(chalk.dim(`  streaming from ${results[0].source}`));
     if (!urls.length) return;
-    console.log(chalk.dim(player ? `  playing with ${player.bin}… (press q to stop)\n` : "  opening in your default player…\n"));
+    if (player) console.log(chalk.dim(`  playing with ${player.bin}\n  `) + chalk.cyan(player.controls) + "\n");
+    else console.log(chalk.dim("  opening in your default player…\n"));
     try { await play(urls); } catch (e) { console.log(chalk.red(`  could not start player: ${e.message}`)); }
     const again = await confirm({ message: "Another surah?", default: false }).catch(() => false);
     return again ? main(argv) : undefined;

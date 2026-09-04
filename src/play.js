@@ -4,9 +4,27 @@ import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
 
 const TERMINAL_PLAYERS = [
-  { bin: "mpv", args: (files) => ["--no-video", "--really-quiet", "--term-osd-bar", ...files] },
-  { bin: "mpg123", args: (files) => ["-q", ...files] },
-  { bin: "ffplay", args: (files) => ["-nodisp", "-autoexit", "-loglevel", "quiet", files[0]], single: true },
+  {
+    bin: "mpv",
+    // --quiet keeps the live status line (time / duration) and terminal key controls.
+    args: (files) => [
+      "--no-video", "--quiet", "--term-osd-bar", "--input-terminal=yes",
+      "--term-status-msg=  ${?pause==yes:⏸ paused }${time-pos} / ${duration}   [${playlist-pos-1}/${playlist-count}]",
+      ...files,
+    ],
+    controls: "SPACE pause/resume   ←/→ seek 5s   ↑/↓ seek 1min   >/< next/prev surah   q stop",
+  },
+  {
+    bin: "mpg123",
+    args: (files) => ["-C", ...files],   // -C enables terminal control keys
+    controls: "SPACE pause/resume   f next surah   d previous   q stop",
+  },
+  {
+    bin: "ffplay",
+    args: (files) => ["-nodisp", "-autoexit", "-loglevel", "quiet", files[0]],
+    single: true,
+    controls: "Ctrl+C stop   (ffplay cannot pause without a window – install mpv for pause/resume)",
+  },
 ];
 
 function has(bin) {
