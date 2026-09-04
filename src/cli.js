@@ -17,6 +17,8 @@ const matches = (hay, q) => {
 // Legacy Windows console (cmd.exe / conhost) cannot shape or right-to-left render Arabic,
 // so Arabic labels are hidden there unless --arabic is passed. Windows Terminal (WT_SESSION) is fine.
 function canRenderArabic() {
+  // Termux on Android cannot shape / right-to-left render Arabic either.
+  if (process.env.TERMUX_VERSION || process.env.PREFIX?.includes("com.termux")) return false;
   if (process.platform !== "win32") return true;
   return Boolean(process.env.WT_SESSION || process.env.TERM_PROGRAM || process.env.WSL_DISTRO_NAME);
 }
@@ -40,8 +42,9 @@ export async function main(argv = process.argv.slice(2)) {
   quran [-o <folder>] [--arabic | --no-arabic]
 
   -o, --out    download folder (default: ${opts.out})
-  --arabic     show Arabic names (hidden automatically in the legacy Windows console,
-               which cannot render Arabic; use Windows Terminal for proper display)`);
+  --arabic     show Arabic names (hidden automatically in terminals that cannot render
+               Arabic: the legacy Windows console and Termux)
+  --no-arabic  hide Arabic names`);
     return;
   }
 

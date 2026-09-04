@@ -123,7 +123,8 @@ Downloads go to `~/Quran/<Reciter>/`.
    ```
    Without `-o`, files go to `~/Quran` inside Termux's private storage, which other apps cannot see.
 
-> Termux renders Arabic correctly. Long-press → paste works in the search prompts if you want to paste Arabic text.
+> Termux cannot render Arabic (letters show isolated and reversed), so Arabic names are hidden there by default.
+> You can still *search* in Arabic — long-press → paste `الكهف` into the prompt works. Use `quran --arabic` to force Arabic labels on.
 
 ### Run without installing
 
