@@ -1,6 +1,6 @@
 {
   "name": "quran-audio",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Download Quran MP3 recitations from the terminal with searchable surah and reciter pickers and multi-source fallback.",
   "type": "module",
   "bin": {

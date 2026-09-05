@@ -7,6 +7,8 @@ import { SURAHS } from "./surahs.js";
 import { loadReciters } from "./sources.js";
 import { downloadSurah, resolveUrl } from "./download.js";
 import { play, findTerminalPlayer } from "./play.js";
+import { playInteractive, CONTROLS } from "./player.js";
+import { timingReadId, ayahTimings } from "./timing.js";
 
 const fold = (s) => s.toLowerCase().replace(/[`'’\-]/g, "").replace(/\s+/g, " ");
 const matches = (hay, q) => {
@@ -126,12 +128,28 @@ export async function main(argv = process.argv.slice(2)) {
   ✗ ${label} ${e.message}`)); return null; });
     }));
     if (surahs.length > 1) process.stdout.write("\r" + " ".repeat(40) + "\r");
-    const urls = results.filter(Boolean).map((r) => r.url);
+    const tracks = surahs.map((s, i) => results[i] && { surah: s, ...results[i] }).filter(Boolean);
     if (surahs.length === 1 && results[0]) console.log(chalk.dim(`  streaming from ${results[0].source}`));
-    if (!urls.length) return;
-    if (player) console.log(chalk.dim(`  playing with ${player.bin}\n  `) + chalk.cyan(player.controls) + "\n");
-    else console.log(chalk.dim("  opening in your default player…\n"));
-    try { await play(urls); } catch (e) { console.log(chalk.red(`  could not start player: ${e.message}`)); }
+    if (!tracks.length) return;
+    if (player?.bin === "mpv") {
+      // Interactive player: progress bar, current ayah, ayah seeking (timings exist for mp3quran streams).
+      const readId = tracks.some((t) => t.source === "mp3quran.net") ? await timingReadId(reciter) : null;
+      if (!readId) console.log(chalk.dim("  (no ayah timings for this reciter/source – ayah keys seek 5s instead)"));
+      console.log("  " + chalk.cyan(CONTROLS) + "\n");
+      try {
+        await playInteractive(tracks.map((t) => ({
+          url: t.url, surah: t.surah,
+          timings: t.source === "mp3quran.net" && readId ? () => ayahTimings(readId, t.surah.number) : null,
+        })));
+      } catch (e) {
+        console.log(chalk.yellow(`  interactive player unavailable (${e.message}), using plain mpv`));
+        await play(tracks.map((t) => t.url)).catch((e) => console.log(chalk.red(`  could not start player: ${e.message}`)));
+      }
+    } else {
+      if (player) console.log(chalk.dim(`  playing with ${player.bin}\n  `) + chalk.cyan(player.controls) + "\n");
+      else console.log(chalk.dim("  opening in your default player…\n"));
+      try { await play(tracks.map((t) => t.url)); } catch (e) { console.log(chalk.red(`  could not start player: ${e.message}`)); }
+    }
     const again = await confirm({ message: "Another surah?", default: false }).catch(() => false);
     return again ? main(argv) : undefined;
   }

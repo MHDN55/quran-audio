@@ -24,7 +24,7 @@ $ quran
 - Search in English or Arabic (`kahf`, `18`, `الكهف`, `afasy`, `العفاسي`)
 - 3 audio sources with automatic fallback — if one is down, the next is used
 - Resume-friendly: already-downloaded files are skipped
-- **Play** option: stream right away without saving anything, in the terminal (mpv / mpg123 / ffplay) or in your browser / default player
+- **Play** option: stream right away without saving anything, with a progress bar, current ayah and ayah-by-ayah seeking (mpv), or in your browser / default player
 
 ---
 
@@ -159,10 +159,25 @@ quran [-o <folder>] [--arabic | --no-arabic]
 3. **Run download** — a progress bar per file. Files are named `001 - Al-Fatihah.mp3` inside a folder named after the reciter.
 4. **Play** — streams the surah directly from the source. Nothing is saved to disk.
    - If `mpv`, `mpg123` or `ffplay` is installed, it streams inside the terminal. On "All 114 surahs" they stream in order as a playlist.
-   - **Player controls** (mpv): `SPACE` pause / resume · `←` `→` seek 5 s · `↑` `↓` seek 1 min · `>` `<` next / previous surah · `q` stop.
-     With mpg123: `SPACE` pause / resume, `f` next, `d` previous, `q` stop. ffplay cannot pause in the terminal, so mpv is recommended.
-   - Otherwise the stream URL opens in your browser / default player (on Android via `termux-open`).
-   - The same 3-source fallback applies: the first source that answers is streamed.
+   - With **mpv** you get an interactive player:
+
+     ```
+     ▶ 018 Al-Kahf  ████████████░░░░░░░░░░░░░░░░░░  12:41 / 32:10   Ayah 47/110
+     ```
+
+     | Key | Action |
+     |-----|--------|
+     | `SPACE` | pause / resume |
+     | `n` / `p` | next / previous ayah |
+     | `←` / `→` | seek 5 seconds |
+     | `↑` / `↓` | seek 1 minute |
+     | `>` / `<` | next / previous surah (in the 114 playlist) |
+     | `q` | stop |
+
+     Ayah positions come from mp3quran.net's timing data, available for about 100 of its reciters
+     (Afasy, Dosari, Husary, Shuraim, Ghamdi, Minshawi, …). For reciters or sources without timings the
+     bar and seconds still work, and `n` / `p` seek 5 seconds instead.
+   - With **mpg123**: `SPACE` pause / resume, `f` next, `d` previous, `q` stop. ffplay cannot pause in the terminal, so mpv is recommended.
 
    To get in-terminal playback:
    ```bash
