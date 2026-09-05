@@ -16,8 +16,11 @@ $ quran
   sources: mp3quran → quranicaudio → islamic
   folder:  C:\Users\you\Quran\Mishary Alafasi
 
-? Ready?  ❯ Run download
-  ✓ 018 Al-Kahf  ← mp3quran.net
+? Ready?  ❯ Play
+            Play and save
+            Download
+
+▶ 018 Al-Kahf  ████████████░░░░░░░░░░░░░░░░░░  12:41 / 32:10   Ayah 47/110
 ```
 
 - 250+ reciters, all 114 surahs, or the full Quran in one go
@@ -204,8 +207,6 @@ quran [-o <folder>] [--arabic | --no-arabic]
    sudo apt install mpv        # Debian / Ubuntu
    pkg install mpv             # Termux
    ```
-
-Re-running the same surah/reciter skips files that already exist, so an interrupted full-Quran download simply continues where it stopped.
 
 ---
 
