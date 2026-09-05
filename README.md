@@ -136,9 +136,18 @@ npx quran-audio
 
 ### Updating
 
-```bash
-npm update -g quran-audio
+The CLI checks npm once a day and tells you when a newer version exists:
+
 ```
+  Update available: 0.5.0 → 0.6.0
+  run: npm install -g quran-audio@latest
+```
+
+```bash
+npm install -g quran-audio@latest
+```
+
+Set `QURAN_NO_UPDATE_CHECK=1` to disable the check.
 
 ---
 

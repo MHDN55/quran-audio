@@ -9,6 +9,15 @@ import { downloadSurah, resolveUrl } from "./download.js";
 import { play, findTerminalPlayer } from "./play.js";
 import { playInteractive, CONTROLS } from "./player.js";
 import { timingReadId, ayahTimings } from "./timing.js";
+import { updateNotice } from "./update.js";
+
+let updateChecked = false;
+async function showUpdateNotice(pending) {
+  if (updateChecked) return;
+  updateChecked = true;
+  const notice = await pending.catch(() => null);
+  if (notice) console.log("\n" + notice + "\n");
+}
 
 const fold = (s) => s.toLowerCase().replace(/[`'’\-]/g, "").replace(/\s+/g, " ");
 const matches = (hay, q) => {
@@ -51,6 +60,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   console.log(chalk.green.bold("\n  Quran CLI") + chalk.dim("  ·  mp3quran.net → quranicaudio.com → cdn.islamic.network\n"));
+  const pendingUpdate = updateChecked ? Promise.resolve(null) : updateNotice(); // runs in the background
 
   // 1. Surah
   const surahChoices = [
@@ -78,6 +88,7 @@ export async function main(argv = process.argv.slice(2)) {
   process.stdout.write(chalk.dim("  loading reciters…"));
   const reciters = await loadReciters({ log: (m) => console.log("\n  " + chalk.yellow(m)) });
   process.stdout.write(`\r  ${chalk.dim(`${reciters.length} reciters available`)}\n`);
+  await showUpdateNotice(pendingUpdate); // the registry check has had the whole reciter load to finish
 
   const eligible = reciters.filter((r) =>
     surahPick === "all" ? true : !r.surahs || r.surahs.includes(surahPick)
