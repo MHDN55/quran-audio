@@ -27,13 +27,25 @@ async function fetchStream(url, onProgress, timeoutMs = 20000) {
  * Download one surah for a reciter, trying every source the reciter has, in order.
  * Returns { file, source } on success; throws with all attempts listed on failure.
  */
-export async function downloadSurah({ reciter, surah, outDir, onProgress, onFallback }) {
-  await mkdir(outDir, { recursive: true });
-  const file = path.join(outDir, `${String(surah.number).padStart(3, "0")} - ${safeName(surah.name)}.mp3`);
+export function localPath(outDir, surah) {
+  return path.join(outDir, `${String(surah.number).padStart(3, "0")} - ${safeName(surah.name)}.mp3`);
+}
+
+/** Returns the local file path if this surah is already downloaded (and non-trivial in size), else null. */
+export async function localFile(outDir, surah) {
+  const file = localPath(outDir, surah);
   try {
     const st = await stat(file);
-    if (st.size > 10_000) return { file, source: "cached", skipped: true };
-  } catch {}
+    return st.size > 10_000 ? file : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function downloadSurah({ reciter, surah, outDir, onProgress, onFallback }) {
+  await mkdir(outDir, { recursive: true });
+  const file = localPath(outDir, surah);
+  if (await localFile(outDir, surah)) return { file, source: "cached", skipped: true };
 
   const errors = [];
   for (const src of SOURCES) {

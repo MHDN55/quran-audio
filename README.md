@@ -1,7 +1,7 @@
 # quran-audio
 
 Download or stream Quran MP3 recitations from your terminal.
-Search for a surah, search for a reciter, press **Run** (or **Play**) — done.
+Search for a surah, search for a reciter, press **Play** — done.
 
 ```
 $ quran
@@ -23,6 +23,9 @@ $ quran
 - 250+ reciters, all 114 surahs, or the full Quran in one go
 - Search in English or Arabic (`kahf`, `18`, `الكهف`, `afasy`, `العفاسي`)
 - 3 audio sources with automatic fallback — if one is down, the next is used
+- **Offline first**: Play uses your downloaded files when present, so no internet is needed for surahs you already have
+- **Play and save**: stream now and download in the background at the same time
+- **Recent**: your last 5 surah + reciter combinations sit at the top of the list – pick one and it plays right away
 - Resume-friendly: already-downloaded files are skipped
 - **Play** option: stream right away without saving anything, with a progress bar, current ayah and ayah-by-ayah seeking (mpv), or in your browser / default player
 
@@ -163,12 +166,17 @@ quran [-o <folder>] [--arabic | --no-arabic]
 
 **Flow**
 
-1. **Surah** — type to filter. Number, English name, Arabic name and common spellings all work (`36`, `yasin`, `ya-sin`, `يس`). Pick **★ All 114 surahs** to download the whole Quran.
+1. **Surah** — type to filter. Number, English name, Arabic name and common spellings all work (`36`, `yasin`, `ya-sin`, `يس`). Pick **★ All 114 surahs** for the whole Quran.
+   Your **5 most recent** surah + reciter combinations are listed first, marked `⟳`. Choosing one skips the reciter step.
 2. **Reciter** — type to filter (`sudais`, `dosari`, `منشاوي`). The `[N sources]` tag shows how many backup sources that reciter has.
-3. **Run download** — a progress bar per file. Files are named `001 - Al-Fatihah.mp3` inside a folder named after the reciter.
-4. **Play** — streams the surah directly from the source. Nothing is saved to disk.
-   - If `mpv`, `mpg123` or `ffplay` is installed, it streams inside the terminal. On "All 114 surahs" they stream in order as a playlist.
-   - With **mpv** you get an interactive player:
+3. **Ready?**
+   - **Play** — plays from your local file if the surah was downloaded before (works offline), otherwise streams it. Nothing is saved.
+   - **Play and save** — streams now and downloads the file in the background at the same time, so next time it plays offline. Hidden when everything is already local.
+   - **Download** — download only, with a progress bar per file. Files are named `001 - Al-Fatihah.mp3` inside a folder named after the reciter.
+
+   Re-running with the same surah/reciter skips files that already exist, so an interrupted full-Quran download simply continues where it stopped.
+
+   **In-terminal player** (mpv):
 
      ```
      ▶ 018 Al-Kahf  ████████████░░░░░░░░░░░░░░░░░░  12:41 / 32:10   Ayah 47/110
@@ -187,6 +195,7 @@ quran [-o <folder>] [--arabic | --no-arabic]
      (Afasy, Dosari, Husary, Shuraim, Ghamdi, Minshawi, …). For reciters or sources without timings the
      bar and seconds still work, and `n` / `p` seek 5 seconds instead.
    - With **mpg123**: `SPACE` pause / resume, `f` next, `d` previous, `q` stop. ffplay cannot pause in the terminal, so mpv is recommended.
+   - Without a terminal player the stream URL opens in your browser / default player (on Android via `termux-open`).
 
    To get in-terminal playback:
    ```bash
