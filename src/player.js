@@ -7,6 +7,11 @@ import path from "node:path";
 import readline from "node:readline";
 import chalk from "chalk";
 import { ayahAt } from "./timing.js";
+import { MPV_NET_ARGS } from "./play.js";
+
+// If mpv sits buffering this long with no progress (dead connection that even ffmpeg's
+// reconnect could not revive), restart the current track at the same position.
+const STALL_SECS = 20;
 
 const fmt = (s) => {
   s = Math.max(0, Math.floor(s || 0));
@@ -31,7 +36,7 @@ function connect(p, tries = 60) {
 }
 
 export const CONTROLS =
-  "SPACE pause/resume   n/p next/prev ayah   ←/→ ±5s   ↑/↓ ±1min   >/< next/prev surah   q stop";
+  "SPACE pause/resume   n/p next/prev ayah   ←/→ ±5s   ↑/↓ ±1min   >/< next/prev surah   r reconnect   q stop";
 
 /**
  * @param tracks  [{ url, surah: {number,name}, timings: () => Promise<timings|null> }]
@@ -39,7 +44,8 @@ export const CONTROLS =
 export async function playInteractive(tracks) {
   const ipc = ipcPath();
   const mpv = spawn("mpv", [
-    "--no-video", "--no-terminal", "--really-quiet", "--idle=no", "--keep-open=no",
+    // --idle=yes so a premature end-file can be retried; we quit on the "idle" event instead.
+    "--no-video", "--no-terminal", "--really-quiet", "--idle=yes", "--keep-open=no", ...MPV_NET_ARGS,
     `--input-ipc-server=${ipc}`, ...tracks.map((t) => t.url),
   ], { stdio: ["ignore", "ignore", "ignore"] });
 
@@ -47,7 +53,10 @@ export async function playInteractive(tracks) {
   let sock;
   try { sock = await connect(ipc); } catch (e) { mpv.kill(); throw e; }
 
-  const state = { time: 0, duration: 0, paused: false, pos: 0 };
+  const state = { time: 0, duration: 0, paused: false, buffering: false, pos: 0 };
+  // Stall watchdog: when the time last moved, and a pending position to restore after a reload.
+  let lastProgress = Date.now(), reloadAt = null, reconnects = 0;
+  const MAX_RECONNECTS = 5; // per track; reset when the next track starts
   const timingsCache = new Map();
   let timings = null;
 
@@ -68,16 +77,42 @@ export async function playInteractive(tracks) {
       if (!line.trim()) continue;
       let msg; try { msg = JSON.parse(line); } catch { continue; }
       if (msg.event === "property-change") {
-        if (msg.name === "time-pos" && msg.data != null) state.time = msg.data;
+        if (msg.name === "time-pos" && msg.data != null) {
+          if (msg.data !== state.time) lastProgress = Date.now();
+          state.time = msg.data;
+        }
         else if (msg.name === "duration" && msg.data != null) state.duration = msg.data;
         else if (msg.name === "pause") state.paused = !!msg.data;
+        else if (msg.name === "paused-for-cache") state.buffering = !!msg.data;
         else if (msg.name === "playlist-pos" && msg.data != null && msg.data !== state.pos) {
-          state.pos = msg.data; state.time = 0; state.duration = 0; timings = null; loadTimings(state.pos);
+          state.pos = msg.data; state.time = 0; state.duration = 0; timings = null; reconnects = 0; loadTimings(state.pos);
         }
+      } else if (msg.event === "end-file") {
+        // A dead connection shows up as a premature "eof"/"error" well before the real end:
+        // go back to the same spot instead of silently skipping the rest of the surah.
+        const premature = (msg.reason === "eof" || msg.reason === "error") &&
+          state.duration > 0 && state.time < state.duration - 3;
+        if (premature && reconnects < MAX_RECONNECTS) {
+          // Back off a little more each time (0s, 5s, 10s, …) so a short outage can pass.
+          reloadAt = state.time; // set now so the "idle" event does not quit meanwhile
+          setTimeout(reconnect, reconnects * 5000);
+        }
+      } else if (msg.event === "idle") {
+        if (reloadAt == null) send(["quit"]); // playlist really finished (not a reload in flight)
+      } else if (msg.event === "file-loaded") {
+        lastProgress = Date.now();
+        if (reloadAt != null) { seek(reloadAt, "absolute"); reloadAt = null; }
       }
     }
   });
-  [["time-pos", 1], ["duration", 2], ["pause", 3], ["playlist-pos", 4]].forEach(([p, i]) => send(["observe_property", i, p]));
+  [["time-pos", 1], ["duration", 2], ["pause", 3], ["playlist-pos", 4], ["paused-for-cache", 5]]
+    .forEach(([p, i]) => send(["observe_property", i, p]));
+
+  // Restart the current track and jump back to where it was (survives a dead connection).
+  const reconnect = () => {
+    reloadAt = state.time; reconnects++; lastProgress = Date.now();
+    send(["playlist-play-index", state.pos]);
+  };
   loadTimings(0);
 
   // ---- rendering --------------------------------------------------------------------
@@ -89,8 +124,11 @@ export async function playInteractive(tracks) {
     const total = timings ? Math.max(...timings.map((a) => a.ayah)) : 0;
     const ayah = timings ? (cur && cur.ayah > 0 ? `Ayah ${cur.ayah}/${total}` : `Ayah –/${total}`) : chalk.dim("no ayah data");
     const time = `${fmt(state.time)} / ${fmt(state.duration)}`;
-    const left = `${state.paused ? chalk.yellow("⏸") : chalk.green("▶")} ${chalk.bold(title)}  `;
-    const right = `  ${time}   ${ayah}${tracks.length > 1 ? chalk.dim(`   [${state.pos + 1}/${tracks.length}]`) : ""}`;
+    const stalled = !state.paused && (state.buffering || reloadAt != null);
+    const icon = state.paused ? chalk.yellow("⏸") : stalled ? chalk.yellow("…") : chalk.green("▶");
+    const left = `${icon} ${chalk.bold(title)}  `;
+    const note = reloadAt != null ? chalk.yellow("   reconnecting…") : stalled ? chalk.yellow("   buffering…") : "";
+    const right = `  ${time}   ${ayah}${note}${tracks.length > 1 ? chalk.dim(`   [${state.pos + 1}/${tracks.length}]`) : ""}`;
     const plain = (s) => s.replace(/\x1b\[[0-9;]*m/g, "");
     const barW = Math.max(10, cols - plain(left).length - plain(right).length - 3);
     const frac = state.duration ? Math.min(1, state.time / state.duration) : 0;
@@ -99,7 +137,11 @@ export async function playInteractive(tracks) {
     const line = left + bar + right;
     process.stdout.write("\r" + line + " ".repeat(Math.max(0, cols - 1 - plain(line).length)));
   };
-  const timer = setInterval(render, 250);
+  const timer = setInterval(() => {
+    // Watchdog: not paused by the user, mpv reports buffering, and no progress for STALL_SECS.
+    if (!state.paused && state.buffering && reloadAt == null && Date.now() - lastProgress > STALL_SECS * 1000) reconnect();
+    render();
+  }, 250);
 
   // ---- keys ---------------------------------------------------------------------------
   const nextAyah = () => {
@@ -120,6 +162,7 @@ export async function playInteractive(tracks) {
     const n = key.name;
     if (n === "q" || n === "escape" || (key.ctrl && n === "c")) return send(["quit"]);
     if (n === "space" || n === "k") return send(["cycle", "pause"]);
+    if (n === "r") return reconnect();
     if (n === "right" || n === "l") return seek(5);
     if (n === "left" || n === "h") return seek(-5);
     if (n === "up") return seek(60);

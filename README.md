@@ -192,7 +192,12 @@ quran [-o <folder>] [--arabic | --no-arabic]
      | `←` / `→` | seek 5 seconds |
      | `↑` / `↓` | seek 1 minute |
      | `>` / `<` | next / previous surah (in the 114 playlist) |
+     | `r` | reconnect (reload the stream at the current position) |
      | `q` | stop |
+
+     Long surahs stream over one HTTP connection for an hour or more. If the connection dies
+     (a router or CDN dropping an idle socket), the player shows `buffering…`, reconnects on its own
+     and continues from the same second; `r` forces that manually.
 
      Ayah positions come from mp3quran.net's timing data, available for about 100 of its reciters
      (Afasy, Dosari, Husary, Shuraim, Ghamdi, Minshawi, …). For reciters or sources without timings the

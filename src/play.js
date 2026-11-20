@@ -3,12 +3,23 @@
 import { spawn, spawnSync } from "node:child_process";
 import path from "node:path";
 
+// Network options for mpv. Long surahs are 100-250 MB: mpv fills its read-ahead cache and
+// then leaves the HTTP connection idle for many minutes, and a NAT/CDN silently drops it.
+// By default ffmpeg then blocks forever on the dead socket and playback "stops" once the
+// cache runs out (always at the same spot). So: a smaller cache that keeps the socket busy,
+// a read timeout, and automatic reconnect (Range request) from where it stopped.
+export const MPV_NET_ARGS = [
+  "--cache=yes", "--demuxer-max-bytes=32MiB", "--demuxer-max-back-bytes=16MiB",
+  "--network-timeout=10",
+  "--stream-lavf-o=reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,reconnect_delay_max=5",
+];
+
 const TERMINAL_PLAYERS = [
   {
     bin: "mpv",
     // --quiet keeps the live status line (time / duration) and terminal key controls.
     args: (files) => [
-      "--no-video", "--quiet", "--term-osd-bar", "--input-terminal=yes",
+      "--no-video", "--quiet", "--term-osd-bar", "--input-terminal=yes", ...MPV_NET_ARGS,
       "--term-status-msg=  ${?pause==yes:⏸ paused }${time-pos} / ${duration}   [${playlist-pos-1}/${playlist-count}]",
       ...files,
     ],
